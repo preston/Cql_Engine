@@ -3,7 +3,7 @@
 ###Usage:
 - Clone repository
 - gradle build
-- gradle appStart
+- gradle appRun
 - Start the CQL Editor (follow instructions from here: https://github.com/c-schuler/Cql_Editor)
 - This service is still in development mode and cross domain origin requests have not been implemented yet.
   - Turn off your web browser security features that prohibit cross domain origin requests
