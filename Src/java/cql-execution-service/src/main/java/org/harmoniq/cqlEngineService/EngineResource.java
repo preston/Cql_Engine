@@ -1,11 +1,11 @@
 package org.harmoniq.cqlEngineService;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.PrintWriter;
+import java.io.*;
 import java.net.URLDecoder;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -20,6 +20,11 @@ import javax.xml.bind.*;
 import org.cqframework.cql.cql2elm.CqlTranslator;
 import org.cqframework.cql.cql2elm.CqlTranslatorException;
 import org.cqframework.cql.cql2elm.LibraryManager;
+import org.cqframework.cql.cql2elm.FhirModelInfoProvider;
+import org.cqframework.cql.cql2elm.ModelInfoLoader;
+
+import org.hl7.elm.r1.VersionedIdentifier;
+
 import org.cqframework.cql.elm.tracking.TrackBack;
 import org.cqframework.cql.elm.execution.Library;
 import org.cqframework.cql.execution.Context;
@@ -29,7 +34,16 @@ import org.cqframework.cql.data.fhir.FhirDataProvider;
 import org.cqframework.cql.data.fhir.FhirMeasureEvaluator;
 
 import org.hl7.fhir.dstu3.model.Measure;
+import org.hl7.fhir.dstu3.model.Observation;
 import org.hl7.fhir.dstu3.model.Patient;
+import org.hl7.fhir.dstu3.model.MeasureReport;
+
+import org.hl7.fhir.dstu3.model.Bundle;
+
+import ca.uhn.fhir.context.FhirContext;
+import ca.uhn.fhir.rest.client.IGenericClient;
+
+import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
 
 import org.json.simple.JSONObject;
 import org.json.simple.JSONArray;
@@ -39,34 +53,33 @@ public class EngineResource {
 
   Library library = null;
   private File xmlFile = null;
+  private String measurePath = null;
 
   @POST
   @Consumes({MediaType.TEXT_PLAIN})
   @Produces({MediaType.TEXT_PLAIN})
   public String evaluateCql(String cql) throws JAXBException, IOException {
-    String[] names = getExpressionNames(cql);
+    Map<String, Integer> expressionNameAndLocMap = getNameAndLocMap(cql);
     JSONArray resultArr = new JSONArray();
     try {
       translate(cql);
-    } catch (IllegalArgumentException e) {
+    }
+    catch (IllegalArgumentException e) {
       JSONObject results = new JSONObject();
       results.put("translation-error", e.getMessage());
       resultArr.add(results);
       return resultArr.toJSONString();
     }
 
+    // get results and build response
     Context context = new Context(library);
-    // check for FHIR evaluation
-    // if (cql.indexOf("using FHIR") != -1) {
-    //   return evaluateFhir(cql, context);
-    // }
-
-    for (int i = 0; i < names.length; ++i) {
+    for (String key : expressionNameAndLocMap.keySet()) {
       JSONObject results = new JSONObject();
       try {
-        results.put("name", names[i]);
-        Object result = context.resolveExpressionRef(library, names[i]).getExpression().evaluate(context);
-        // could consider including more information like type, operation being performed, etc...
+        results.put("name", key);
+        Object result = context.resolveExpressionRef(library, key).getExpression().evaluate(context);
+        // making an assumption here that expression appears at begining column of line....
+        results.put("location", "[" + expressionNameAndLocMap.get(key) + ": 1]");
         results.put("result", result == null ? "Null" : result.toString());
         String type = result == null ? "Null" : result.getClass().getSimpleName();
         if (type.equals("BigDecimal")) { type = "Decimal"; }
@@ -80,19 +93,50 @@ public class EngineResource {
     return resultArr.toJSONString();
   }
 
-  public String[] getExpressionNames(String cql) {
-    List<String> allMatches = new ArrayList<String>();
-    Matcher m = Pattern.compile("(?<=define\\s).*?(?=:)").matcher(cql);
-    while (m.find()) { allMatches.add(m.group().replaceAll("\"", "").trim()); }
-    return allMatches.toArray(new String[0]);
+  public Map<String, Integer> getNameAndLocMap(String cql) {
+    // remove comments
+    cql = cql.replaceAll("(//).*", "");
+    cql = replaceMultilineComments(cql);
+
+    // get each line
+    String[] linesOfCode = cql.split("\\r?\\n");
+
+    // Map format: { "name of expression" : location/line# of expression }
+    Map<String, Integer> lineContents = new HashMap<>();
+    for (int i = 0; i < linesOfCode.length; ++i) {
+      // get define statement, but NOT functions
+      if (linesOfCode[i].indexOf("define") >= 0 && linesOfCode[i].indexOf("define function") == -1) {
+        Matcher m = Pattern.compile("(?<=define\\s).*?(?=:)").matcher(linesOfCode[i]);
+        while (m.find()) {
+          // line number = i + 1
+          lineContents.put(m.group().replaceAll("\"", "").trim(), i + 1);
+        }
+      }
+    }
+    return lineContents;
+  }
+
+  public String replaceMultilineComments(String cql) {
+    int numLines = 0;
+    int idx = 0;
+    while (cql.indexOf("/*", idx) >= 0) {
+      String commented = cql.substring(cql.indexOf("/*", idx), cql.indexOf("*/", idx + 1) + 2);
+      numLines += commented.split("\\r?\\n").length;
+      String replace = "";
+      for (int i = 0; i < numLines - 1; ++i) {
+        replace += "\n";
+      }
+      cql = cql.replace(commented, replace);
+      idx = cql.indexOf("*/", idx);
+    }
+    return cql;
   }
 
   public void translate(String cql) throws JAXBException, IOException {
-    LibraryManager libraryManager = new LibraryManager();
     try {
       ArrayList<CqlTranslator.Options> options = new ArrayList<>();
       options.add(CqlTranslator.Options.EnableDateRangeOptimization);
-      CqlTranslator translator = CqlTranslator.fromText(cql, libraryManager, options.toArray(new CqlTranslator.Options[options.size()]));
+      CqlTranslator translator = CqlTranslator.fromText(cql, new LibraryManager(), options.toArray(new CqlTranslator.Options[options.size()]));
 
       if (translator.getErrors().size() > 0) {
         System.err.println("Translation failed due to errors:");
@@ -119,33 +163,4 @@ public class EngineResource {
 
     library = CqlLibraryReader.read(xmlFile);
   }
-
-  // public String evaluateFhir(String cql, Context context) {
-  //   FhirDataProvider provider = new FhirDataProvider().withEndpoint("http://fhirtest.uhn.ca/baseDstu3");
-  //   //FhirDataProvider provider = new FhirDataProvider().withEndpoint("http://fhir3.healthintersections.com.au/open/");
-  //   //FhirDataProvider provider = new FhirDataProvider().withEndpoint("http://wildfhir.aegis.net/fhir");
-  //   context.registerDataProvider("http://hl7.org/fhir", provider);
-  //
-  //   xmlFile = new File(URLDecoder.decode(TestFhirLibrary.class.getResource("measure-cbp.xml").getFile(), "UTF-8"));
-  //   Measure measure = provider.getFhirClient().getFhirContext().newXmlParser().parseResource(Measure.class, new FileReader(xmlFile));
-  //
-  //   Patient patient = provider.getFhirClient().read().resource(Patient.class).withId("pat001").execute();
-  //   // TODO: Couldn't figure out what matcher to use here, gave up.
-  //   if (patient == null) {
-  //       throw new RuntimeException("Patient is null");
-  //   }
-  //
-  //   context.setContextValue("Patient", patient.getId());
-  //
-  //   FhirMeasureEvaluator evaluator = new FhirMeasureEvaluator();
-  //   org.hl7.fhir.dstu3.model.MeasureReport report = evaluator.evaluate(provider.getFhirClient(), context, measure, patient);
-  //
-  //   if (report == null) {
-  //       throw new RuntimeException("MeasureReport is null");
-  //   }
-  //
-  //   if (report.getEvaluatedResources() == null) {
-  //       throw new RuntimeException("EvaluatedResources is null");
-  //   }
-  // }
 }

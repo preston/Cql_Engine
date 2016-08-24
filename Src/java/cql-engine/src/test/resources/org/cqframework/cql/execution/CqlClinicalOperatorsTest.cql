@@ -1,13 +1,17 @@
 library ClinicalOperator version '1'
 
+using QUICK
+
 codesystem "LOINC": 'http://loinc.org'
+
+valueset "Feeding Intention-Breast": '2.16.840.1.113762.1.4.1045.29'
 
 context Population
 
 //Age
-/*define PatientExpression: Patient { Name: 'Patrick', DOB: @2014-01-01 }
-context Patient
-define AgeYears: Patient.AgeInYears()*/
+// define PatientExpression: Patient { Name: 'Patrick', DOB: @2014-01-01 }
+/*context Patient*/
+//define AgeYears: AgeInYears()
 
 //AgeAt
 
@@ -57,6 +61,18 @@ define ConceptEquivalentNullTrue: Concept3 ~ Concept3
 define ConceptEquivalentNullFalse: Concept2 ~ Concept3*/
 
 //In (Codesystem)
-define InCodeSystemStringTrue: '66071002' in "LOINC"
+// TODO: additional tests once terminology provider is running
+define InCodeSystemStringNull: '66071002' in "LOINC"
+define InCodeSystemCodeNull: Code '8480-6' from "LOINC" display 'Systolic blood pressure' in "LOINC"
+define InCodeSystemConceptNull:
+  Concept { Code '66071002' from "LOINC", Code 'B18.1' from "LOINC"} display 'Type B viral hepatitis'
+    in "LOINC"
 
 //In (Valueset)
+// TODO: additional tests once terminology provider is running
+define InValueSetFalseString: '1963-2' in "Feeding Intention-Breast"
+define InValueSetFalseCode:
+  Code '8480-6' from "LOINC" display 'Systolic blood pressure' in "Feeding Intention-Breast"
+define InValueSetFalseConcept:
+  Concept { Code '66071002' from "LOINC", Code 'B18.1' from "LOINC"} display 'Type B viral hepatitis'
+    in "Feeding Intention-Breast"

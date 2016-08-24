@@ -233,8 +233,4 @@ public class Interval {
 
         throw new NotImplementedException(String.format("MaxValue is not implemented for type %s.", type.getTypeName()));
     }
-
-    public String toString() {
-      return "[" + this.getStart().toString() + ", " + this.getEnd().toString() + "]";
-    }
 }

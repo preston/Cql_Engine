@@ -55,12 +55,4 @@ public class Concept {
 
         return true;
     }
-
-    public String toString() {
-      String retVal = "{ ";
-      for (Code c : this.getCodes()) {
-        retVal += c.toString() + ", ";
-      }
-      return retVal + "} " + (this.display == null ? "" : this.display);
-    }
 }

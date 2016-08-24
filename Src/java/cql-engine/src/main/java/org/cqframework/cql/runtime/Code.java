@@ -55,20 +55,15 @@ public class Code {
 
     @Override
     public boolean equals(Object other) {
-      if (other instanceof Code) {
-        Code otherCode = (Code)other;
-        return this.getCode().equals(otherCode.getCode())
-                && ((this.getSystem() == null && otherCode.getSystem() == null)
-                    || (this.getSystem() != null && this.getSystem().equals(otherCode.getSystem())))
-                && ((this.getVersion() == null && otherCode.getVersion() == null)
-                    || (this.getVersion() != null && this.getVersion().equals(otherCode.getVersion())));
-      }
+        if (other instanceof Code) {
+            Code otherCode = (Code)other;
+            return this.getCode().equals(otherCode.getCode())
+                    && ((this.getSystem() == null && otherCode.getSystem() == null)
+                        || (this.getSystem() != null && this.getSystem().equals(otherCode.getSystem())))
+                    && ((this.getVersion() == null && otherCode.getVersion() == null)
+                        || (this.getVersion() != null && this.getVersion().equals(otherCode.getVersion())));
+        }
 
-      return false;
-    }
-
-    public String toString() {
-      return "Code: " + this.code + " system: " + this.system + (this.display == null ? "" : " display: " + this.display) +
-                (this.version == null ? "" : " version: " + this.version);
+        return false;
     }
 }

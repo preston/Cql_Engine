@@ -6,3 +6,4 @@ dependencies {
     compile group: 'ca.uhn.hapi.fhir', name: 'hapi-fhir-structures-dstu3', version: '1.5'
     compile project(':cql-engine')
 }
+

@@ -9,8 +9,13 @@ dependencies {
   compile group: 'com.googlecode.json-simple', name: 'json-simple', version: '1.1'
   compile group: 'ca.uhn.hapi.fhir', name: 'hapi-fhir-base', version: '1.5'
   compile group: 'ca.uhn.hapi.fhir', name: 'hapi-fhir-structures-dstu3', version: '1.5'
+  compile group: 'org.eclipse.jetty', name: 'jetty-servlets', version: '9.0.0.M4'
   compile project(':cql-engine')
   compile project(':cql-engine-fhir')
+}
+
+gretty {
+   serverConfigFile = "jetty.xml"
 }
 
 generateSources {

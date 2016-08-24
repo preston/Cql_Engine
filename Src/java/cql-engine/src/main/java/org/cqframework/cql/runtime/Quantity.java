@@ -40,8 +40,4 @@ public class Quantity {
         return value.compareTo(otherQuantity.getValue()) == 0
                 && ((unit == null && otherQuantity.getUnit() == null) || unit.equals(otherQuantity.getUnit()));
     }
-
-    public String toString() {
-      return value.toString() + unit;
-    }
 }

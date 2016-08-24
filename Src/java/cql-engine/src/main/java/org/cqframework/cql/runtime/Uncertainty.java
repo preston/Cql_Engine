@@ -130,8 +130,4 @@ public class Uncertainty {
     return new ArrayList<Interval>(Arrays.asList(leftU, rightU));
   }
 
-  public String toString() {
-    return "[" + uncertainty.getStart().toString() + ", " + uncertainty.getEnd().toString() + "]";
-  }
-
 }

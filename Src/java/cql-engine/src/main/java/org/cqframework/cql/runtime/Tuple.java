@@ -22,8 +22,4 @@ public class Tuple {
     setElements(elements);
     return this;
   }
-
-  public String toString() {
-    return elements.toString();
-  }
 }

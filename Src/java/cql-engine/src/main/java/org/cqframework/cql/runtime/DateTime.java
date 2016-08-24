@@ -122,7 +122,7 @@ public class DateTime {
 
   public static DateTime expandPartialMax(DateTime dt, int size, int maxPrecision) {
     for (int i = dt.getPartial().size(); i < size; ++i) {
-      // only want to max values up to the missing precision
+      // only want to max values up to the missing precision 
       if (i > maxPrecision) {
         dt.setPartial(dt.getPartial().with(DateTime.getField(i), DateTime.getField(i).getField(null).getMinimumValue()));
       }
@@ -145,9 +145,5 @@ public class DateTime {
       }
     }
     return true;
-  }
-
-  public String toString() {
-    return dateTime.toString();
   }
 }
